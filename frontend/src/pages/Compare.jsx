@@ -134,14 +134,20 @@ function Compare() {
           {/* Team Names Header */}
           <div className="grid grid-cols-3 items-center mb-6">
             <div className="text-right">
-              <Link to={`/team/${comparison.team1.id}`} className="hover:underline">
+              <Link to={`/team/${comparison.team1.id}`} className="hover:underline flex flex-col items-end">
+                {comparison.team1.logo_url && (
+                  <img src={comparison.team1.logo_url} alt={comparison.team1.name} className="w-12 h-12 mb-2" />
+                )}
                 <h2 className="text-xl font-bold">{comparison.team1.name}</h2>
                 <p className="text-sm text-gray-500">{comparison.team1.city}</p>
               </Link>
             </div>
             <p className="text-center text-2xl font-bold text-gray-300">VS</p>
             <div>
-              <Link to={`/team/${comparison.team2.id}`} className="hover:underline">
+              <Link to={`/team/${comparison.team2.id}`} className="hover:underline flex flex-col items-start">
+                {comparison.team2.logo_url && (
+                  <img src={comparison.team2.logo_url} alt={comparison.team2.name} className="w-12 h-12 mb-2" />
+                )}
                 <h2 className="text-xl font-bold">{comparison.team2.name}</h2>
                 <p className="text-sm text-gray-500">{comparison.team2.city}</p>
               </Link>

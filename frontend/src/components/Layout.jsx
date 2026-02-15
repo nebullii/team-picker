@@ -40,6 +40,9 @@ function Layout({ children }) {
           <p className="text-sm text-gray-400">
             Built with Super Bowl data. For entertainment purposes only.
           </p>
+          <p className="text-xs text-gray-500 mt-2">
+            All team names, logos, and trademarks are property of their respective owners. Not affiliated with or endorsed by the NFL.
+          </p>
         </div>
       </footer>
     </div>

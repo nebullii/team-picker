@@ -24,6 +24,48 @@ app.add_middleware(
 DB_PATH = os.path.join(os.path.dirname(__file__), "teams.db")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+LOGO_BASE = "https://a.espncdn.com/i/teamlogos/nfl/500"
+TEAM_ABBREVS = {
+    "Green Bay Packers": "gb",
+    "Kansas City Chiefs": "kc",
+    "Oakland Raiders": "lv",
+    "New York Jets": "nyj",
+    "Baltimore Colts": "ind",
+    "Minnesota Vikings": "min",
+    "Dallas Cowboys": "dal",
+    "Miami Dolphins": "mia",
+    "Washington Redskins": "wsh",
+    "Pittsburgh Steelers": "pit",
+    "Denver Broncos": "den",
+    "Los Angeles Rams": "lar",
+    "Philadelphia Eagles": "phi",
+    "San Francisco 49er": "sf",
+    "Cincinnati Bengals": "cin",
+    "Los Angeles Raiders": "lv",
+    "San Francisco 49ers": "sf",
+    "Chicago Bears": "chi",
+    "New England Patriots": "ne",
+    "New York Giants": "nyg",
+    "Buffalo Bills": "buf",
+    "San Diego Chargers": "lac",
+    "Atlanta Falcons": "atl",
+    "St. Louis Rams": "lar",
+    "Tennessee Titans": "ten",
+    "Baltimore Ravens": "bal",
+    "Tampa Bay Buccaneers": "tb",
+    "Carolina Panthers": "car",
+    "Seattle Seahawks": "sea",
+    "Indianapolis Colts": "ind",
+    "Arizona Cardinals": "ari",
+    "New Orleans Saints": "no",
+}
+
+
+def get_logo_url(team_name: str) -> str:
+    abbrev = TEAM_ABBREVS.get(team_name, "")
+    return f"{LOGO_BASE}/{abbrev}.png" if abbrev else ""
+
+
 VERDICTS = [
     (20, "Abandon Ship", "This team will break your heart. Repeatedly."),
     (40, "Proceed with Caution", "Hope is a dangerous thing, and this team knows it."),
@@ -49,6 +91,7 @@ def get_verdict(score: int) -> dict:
 def team_to_dict(row) -> dict:
     d = dict(row)
     d["verdict"] = get_verdict(d["rootability_score"])
+    d["logo_url"] = get_logo_url(d["name"])
     return d
 
 
@@ -177,7 +220,7 @@ def list_team_names():
     conn = get_db()
     rows = conn.execute("SELECT id, name FROM teams ORDER BY name").fetchall()
     conn.close()
-    return [{"id": r["id"], "name": r["name"]} for r in rows]
+    return [{"id": r["id"], "name": r["name"], "logo_url": get_logo_url(r["name"])} for r in rows]
 
 
 @app.get("/api/teams/random")
@@ -272,8 +315,10 @@ def analyze_team(req: AnalyzeRequest):
             break
 
     return {
+        "team_id": team_data["team"]["id"],
         "team_name": team_data["team"]["name"],
         "team_city": team_data["team"]["city"],
+        "logo_url": get_logo_url(team_data["team"]["name"]),
         "analysis": analysis,
         "rootometer_score": score,
     }
@@ -307,7 +352,7 @@ Give a short, punchy head-to-head take (3-5 sentences max). Pick a winner. No fl
     analysis = call_llm(prompt)
 
     return {
-        "team1": {"name": t1["name"], "city": t1["city"], "rootability_score": t1["rootability_score"]},
-        "team2": {"name": t2["name"], "city": t2["city"], "rootability_score": t2["rootability_score"]},
+        "team1": {"name": t1["name"], "city": t1["city"], "rootability_score": t1["rootability_score"], "logo_url": get_logo_url(t1["name"])},
+        "team2": {"name": t2["name"], "city": t2["city"], "rootability_score": t2["rootability_score"], "logo_url": get_logo_url(t2["name"])},
         "analysis": analysis,
     }

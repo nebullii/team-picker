@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const CACHE_KEY = 'team-picker-history'
@@ -18,13 +18,26 @@ function saveToCache(entry) {
   localStorage.setItem(CACHE_KEY, JSON.stringify(history.slice(0, 20)))
 }
 
+function removeFromCache(teamName) {
+  const history = loadCache().filter(h => h.team_name !== teamName)
+  localStorage.setItem(CACHE_KEY, JSON.stringify(history))
+  return history
+}
+
 function Home() {
+  const location = useLocation()
   const [teams, setTeams] = useState([])
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [history, setHistory] = useState(loadCache)
+
+  useEffect(() => {
+    setAnalysis(null)
+    setSelectedTeamId('')
+    setError(null)
+  }, [location.key])
 
   useEffect(() => {
     fetch(`${API_BASE}/api/teams/names`)
@@ -131,6 +144,9 @@ function Home() {
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               {/* Score Header */}
               <div className={`bg-gradient-to-r ${getScoreBg(analysis.rootometer_score)} p-8 text-white text-center`}>
+                {analysis.logo_url && (
+                  <img src={analysis.logo_url} alt={analysis.team_name} className="w-20 h-20 mx-auto mb-3 drop-shadow-lg" />
+                )}
                 <p className="text-sm uppercase tracking-widest opacity-80 mb-1">Root-O-Meter</p>
                 <p className="text-6xl font-black">{analysis.rootometer_score}</p>
                 <p className="text-2xl font-bold mt-2">{analysis.team_name}</p>
@@ -162,13 +178,13 @@ function Home() {
               {/* Actions */}
               <div className="px-8 pb-8 flex flex-wrap gap-3">
                 <Link
-                  to={`/team/${selectedTeamId}`}
+                  to={`/team/${analysis.team_id}`}
                   className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
                 >
                   Full Team Profile
                 </Link>
                 <Link
-                  to={`/compare?team1=${selectedTeamId}`}
+                  to={`/compare?team1=${analysis.team_id}`}
                   className="px-5 py-2.5 border border-indigo-200 text-indigo-600 rounded-xl font-medium hover:bg-indigo-50 transition-colors"
                 >
                   Compare with Another
@@ -177,7 +193,7 @@ function Home() {
             </div>
           )}
 
-          {!analysis && !loading && !error && (
+          {!analysis && !loading && !error && history.length === 0 && (
             <div className="text-center py-16">
               <div className="text-6xl mb-4">🏈</div>
               <p className="text-gray-400 text-lg">Pick a team above to get your verdict</p>
@@ -193,15 +209,26 @@ function Home() {
             <h2 className="text-lg font-bold text-gray-700 mb-4">Previous Lookups</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {history.map((h, i) => (
-                <button
+                <div
                   key={`${h.team_name}-${i}`}
+                  className="bg-white rounded-xl shadow-sm p-4 text-left hover:shadow-md transition-shadow relative cursor-pointer"
                   onClick={() => setAnalysis(h)}
-                  className="bg-white rounded-xl shadow-sm p-4 text-left hover:shadow-md transition-shadow"
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-900">{h.team_name}</p>
-                      <p className="text-xs text-gray-400">{h.team_city}</p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setHistory(removeFromCache(h.team_name)) }}
+                    className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    x
+                  </button>
+                  <div className="flex items-center justify-between pr-6">
+                    <div className="flex items-center gap-3">
+                      {h.logo_url && (
+                        <img src={h.logo_url} alt={h.team_name} className="w-10 h-10" />
+                      )}
+                      <div>
+                        <p className="font-semibold text-gray-900">{h.team_name}</p>
+                        <p className="text-xs text-gray-400">{h.team_city}</p>
+                      </div>
                     </div>
                     <span className={`text-2xl font-black ${getScoreColor(h.rootometer_score)}`}>
                       {h.rootometer_score}
@@ -210,7 +237,7 @@ function Home() {
                   <p className="text-sm text-gray-500 mt-2 line-clamp-2">
                     {cleanAnalysis(h.analysis)}
                   </p>
-                </button>
+                </div>
               ))}
             </div>
           </div>

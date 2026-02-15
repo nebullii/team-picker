@@ -91,10 +91,15 @@ function TeamDetail() {
       {/* Team Header with Score */}
       <div className={`bg-gradient-to-r ${getScoreBg(score)} rounded-2xl p-8 text-white mb-6`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-wide opacity-80 mb-1">{team.conference}</p>
-            <h1 className="text-3xl md:text-4xl font-bold">{team.name}</h1>
-            <p className="opacity-80">{team.city}</p>
+          <div className="flex items-center gap-4">
+            {team.logo_url && (
+              <img src={team.logo_url} alt={team.name} className="w-16 h-16 drop-shadow-lg" />
+            )}
+            <div>
+              <p className="text-sm uppercase tracking-wide opacity-80 mb-1">{team.conference}</p>
+              <h1 className="text-3xl md:text-4xl font-bold">{team.name}</h1>
+              <p className="opacity-80">{team.city}</p>
+            </div>
           </div>
           <div className="mt-4 md:mt-0 text-center">
             <p className="text-sm uppercase tracking-widest opacity-80">Root-O-Meter</p>
