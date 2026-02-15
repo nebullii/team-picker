@@ -45,6 +45,6 @@ npm run dev   # Starts dev server on :3000 (proxies /api to :8000)
 
 ## Data
 
-Uses Super Bowl results (I–LIII) from `ThrowbackDataThursday 2019 Week 5 - Super Bowl.csv`. The seed script extracts 32 unique teams, computes rootability scores based on win %, championships, point margins, and appearance frequency, then writes to SQLite.
+Uses Super Bowl results (I–LIII) from [ThrowbackDataThursday 2019 Week 5 - Super Bowl.csv](https://www.kaggle.com/datasets/thedevastator/super-bowl-game-results). The seed script extracts 32 unique teams, computes rootability scores based on win %, championships, point margins, and appearance frequency, then writes to SQLite.
 
 Built with [Forge](https://github.com/nebullii/forge).
