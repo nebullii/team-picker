@@ -1,30 +1,50 @@
 # Team Picker
 
-A web application that tells you whether rooting for a particular sports team is a good idea based on their historical performance. Search for any major sports team (NFL, NBA, MLB, NHL, soccer) and get a fun, data-driven verdict on whether they're worth cheering for.
+Should you root for them? A data-driven verdict on NFL teams based on Super Bowl history.
 
 ## Features
 
-- Search bar to find teams by name, city, or league
-- Team profile card showing key stats (win rate, championships, current streak)
-- "Root-O-Meter" verdict gauge from "Abandon Ship" to "Bandwagon Approved"
-- Fun verdict text explaining why you should or shouldn't root for them
-- Historical win/loss trend chart (last 10 seasons)
-- Head-to-head comparison mode (compare two teams side by side)
-- "Pick a Random Team" button for the indecisive
-- Pre-seeded database with real team data across major leagues
+- Search teams by name or city
+- "Root-O-Meter" score (0-100) with snarky verdicts
+- Super Bowl history timeline per team
+- Head-to-head team comparison
+- "Pick a Random Team" button
 
 ## Tech Stack
 
-- Frontend: React 18+ with Vite
-- Backend: FastAPI (Python 3.10+)
-- Database: SQLite
-- Styling: Tailwind CSS
+- **Frontend**: React 18 + Vite + Tailwind CSS
+- **Backend**: FastAPI (Python)
+- **Database**: SQLite (pre-seeded from Super Bowl CSV)
 
 ## Getting Started
 
-### Prerequisites
+### Backend
 
-- Python 3.10+
-- Node.js 18+
+```bash
+cd backend
+pip install -r requirements.txt
+python seed_db.py          # Seeds the database from CSV (run once)
+uvicorn main:app --reload  # Starts API on :8000
+```
 
-### Backend Setup
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev   # Starts dev server on :3000 (proxies /api to :8000)
+```
+
+### API Endpoints
+
+- `GET /api/teams` — List all teams (supports `?search=`)
+- `GET /api/teams/:id` — Team details with verdict
+- `GET /api/teams/:id/history` — Super Bowl game history
+- `GET /api/teams/random` — Random team
+- `GET /api/compare?team1=:id&team2=:id` — Compare two teams
+
+## Data
+
+Uses Super Bowl results (I–LIII) from `ThrowbackDataThursday 2019 Week 5 - Super Bowl.csv`. The seed script extracts 32 unique teams, computes rootability scores based on win %, championships, point margins, and appearance frequency, then writes to SQLite.
+
+Built with [Forge](https://github.com/nebullii/forge).

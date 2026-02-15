@@ -3,6 +3,8 @@
         "src/.*",
         "app/.*",
         "apps/.*",
+        "backend/.*",
+        "frontend/.*",
         "packages/.*",
         "services/.*",
         "lib/.*",

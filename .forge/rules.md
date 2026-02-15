@@ -18,8 +18,10 @@
 │   └── vite.config.js
 ├── backend/           # FastAPI app
 │   ├── main.py
-│   ├── routes/
+│   ├── seed_db.py     # CSV → SQLite seeder (run once)
+│   ├── teams.db       # Pre-seeded SQLite (generated)
 │   └── requirements.txt
+├── ThrowbackDataThursday 2019 Week 5 - Super Bowl.csv
 └── README.md
 ```
 

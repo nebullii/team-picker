@@ -1,143 +1,72 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [teams, setTeams] = useState([])
-  const [featuredTeams, setFeaturedTeams] = useState([])
-  const [leagues, setLeagues] = useState([])
-  const [selectedLeague, setSelectedLeague] = useState('')
   const [loading, setLoading] = useState(true)
-  const [searching, setSearching] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
-    fetchInitialData()
+    fetch(`${API_BASE}/api/teams`)
+      .then(res => res.json())
+      .then(data => { setTeams(data); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
-
-  async function fetchInitialData() {
-    try {
-      const [teamsRes, leaguesRes] = await Promise.all([
-        fetch(`${API_BASE}/teams?limit=6`),
-        fetch(`${API_BASE}/leagues`)
-      ])
-      
-      if (teamsRes.ok) {
-        const teamsData = await teamsRes.json()
-        setFeaturedTeams(teamsData.teams || [])
-      }
-      
-      if (leaguesRes.ok) {
-        const leaguesData = await leaguesRes.json()
-        setLeagues(leaguesData.leagues || [])
-      }
-    } catch (error) {
-      console.error('Failed to fetch initial data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   async function handleSearch(e) {
     e.preventDefault()
-    if (!searchQuery.trim() && !selectedLeague) {
-      setTeams([])
-      return
-    }
-
-    setSearching(true)
-    try {
-      const params = new URLSearchParams()
-      if (searchQuery.trim()) params.append('search', searchQuery.trim())
-      if (selectedLeague) params.append('league', selectedLeague)
-
-      const response = await fetch(`${API_BASE}/teams?${params}`)
-      if (response.ok) {
-        const data = await response.json()
-        setTeams(data.teams || [])
-      }
-    } catch (error) {
-      console.error('Search failed:', error)
-    } finally {
-      setSearching(false)
-    }
+    setLoading(true)
+    const params = searchQuery.trim() ? `?search=${encodeURIComponent(searchQuery)}` : ''
+    const res = await fetch(`${API_BASE}/api/teams${params}`)
+    setTeams(await res.json())
+    setLoading(false)
   }
 
   async function handleRandomTeam() {
-    try {
-      const response = await fetch(`${API_BASE}/teams/random`)
-      if (response.ok) {
-        const team = await response.json()
-        navigate(`/team/${team.id}`)
-      }
-    } catch (error) {
-      console.error('Failed to get random team:', error)
-    }
+    const res = await fetch(`${API_BASE}/api/teams/random`)
+    const team = await res.json()
+    navigate(`/team/${team.id}`)
   }
 
   function getVerdictColor(score) {
-    if (score <= 20) return 'text-red-600 bg-red-50'
-    if (score <= 40) return 'text-orange-600 bg-orange-50'
-    if (score <= 60) return 'text-yellow-600 bg-yellow-50'
-    if (score <= 80) return 'text-green-600 bg-green-50'
-    return 'text-emerald-600 bg-emerald-50'
-  }
-
-  function getVerdictLabel(score) {
-    if (score <= 20) return 'Abandon Ship'
-    if (score <= 40) return 'Proceed with Caution'
-    if (score <= 60) return 'Solid Pick'
-    if (score <= 80) return 'Great Choice'
-    return 'Bandwagon Approved'
+    if (score <= 20) return 'text-red-600 bg-red-50 border-red-200'
+    if (score <= 40) return 'text-orange-600 bg-orange-50 border-orange-200'
+    if (score <= 60) return 'text-yellow-600 bg-yellow-50 border-yellow-200'
+    if (score <= 80) return 'text-green-600 bg-green-50 border-green-200'
+    return 'text-emerald-600 bg-emerald-50 border-emerald-200'
   }
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white py-16 px-4">
+      {/* Hero */}
+      <section className="bg-gradient-to-br from-indigo-700 via-indigo-800 to-indigo-900 text-white py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4">
             Should You Root For Them?
           </h1>
-          <p className="text-xl text-primary-100 mb-8">
-            Get a data-driven verdict on whether a sports team is worth your emotional investment
+          <p className="text-xl text-indigo-200 mb-8">
+            A data-driven verdict on NFL teams based on Super Bowl history
           </p>
 
-          {/* Search Form */}
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search teams by name or city..."
-                  className="w-full px-5 py-4 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-4 focus:ring-primary-300 outline-none text-lg"
-                />
-              </div>
-              <select
-                value={selectedLeague}
-                onChange={(e) => setSelectedLeague(e.target.value)}
-                className="px-4 py-4 rounded-xl text-gray-900 bg-white focus:ring-4 focus:ring-primary-300 outline-none"
-              >
-                <option value="">All Leagues</option>
-                {leagues.map((league) => (
-                  <option key={league} value={league}>{league}</option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                disabled={searching}
-                className="px-6 py-4 bg-accent-500 hover:bg-accent-600 rounded-xl font-semibold transition-colors disabled:opacity-50"
-              >
-                {searching ? 'Searching...' : 'Search'}
-              </button>
-            </div>
+          <form onSubmit={handleSearch} className="max-w-xl mx-auto flex gap-3">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by team name or city..."
+              className="flex-1 px-5 py-4 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-4 focus:ring-indigo-300 outline-none text-lg"
+            />
+            <button
+              type="submit"
+              className="px-6 py-4 bg-emerald-500 hover:bg-emerald-600 rounded-xl font-semibold transition-colors"
+            >
+              Search
+            </button>
           </form>
 
-          {/* Random Team Button */}
           <button
             onClick={handleRandomTeam}
             className="mt-6 inline-flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-full transition-colors"
@@ -148,87 +77,54 @@ function Home() {
         </div>
       </section>
 
-      {/* Search Results */}
-      {teams.length > 0 && (
-        <section className="py-12 px-4 bg-gray-100">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6">Search Results</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {teams.map((team) => (
-                <Link
-                  key={team.id}
-                  to={`/team/${team.id}`}
-                  className="card hover:scale-105 transition-transform"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="text-sm text-gray-500 uppercase tracking-wide">{team.league}</p>
-                      <h3 className="text-xl font-bold">{team.city} {team.name}</h3>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getVerdictColor(team.rootability_score)}`}>
-                      {team.rootability_score}
-                    </span>
-                  </div>
-                  <p className="text-gray-600">
-                    Win Rate: {((team.total_wins / (team.total_wins + team.total_losses)) * 100).toFixed(1)}%
-                  </p>
-                  <p className="text-sm text-gray-500 mt-2">{getVerdictLabel(team.rootability_score)}</p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Featured Teams */}
+      {/* Teams Grid */}
       <section className="py-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Featured Teams</h2>
-            <Link
-              to="/compare"
-              className="text-primary-600 hover:text-primary-700 font-medium"
-            >
+            <h2 className="text-2xl font-bold">
+              {searchQuery ? 'Search Results' : 'All Teams — Ranked by Rootability'}
+            </h2>
+            <Link to="/compare" className="text-indigo-600 hover:text-indigo-700 font-medium">
               Compare Teams →
             </Link>
           </div>
 
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="card animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-1/3 mb-3"></div>
-                  <div className="h-6 bg-gray-200 rounded w-2/3 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="bg-white rounded-xl shadow p-6 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+                  <div className="h-6 bg-gray-200 rounded w-2/3 mb-2" />
+                  <div className="h-4 bg-gray-200 rounded w-1/2" />
                 </div>
               ))}
             </div>
+          ) : teams.length === 0 ? (
+            <p className="text-center text-gray-500 py-12">No teams found. Try a different search.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredTeams.map((team) => (
+              {teams.map(team => (
                 <Link
                   key={team.id}
                   to={`/team/${team.id}`}
-                  className="card hover:scale-105 transition-transform cursor-pointer"
+                  className="bg-white rounded-xl shadow hover:shadow-lg p-6 transition-all hover:scale-[1.02]"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <p className="text-sm text-gray-500 uppercase tracking-wide">{team.league}</p>
-                      <h3 className="text-xl font-bold">{team.city} {team.name}</h3>
+                      <p className="text-sm text-gray-500 uppercase tracking-wide">{team.conference}</p>
+                      <h3 className="text-xl font-bold text-gray-900">{team.name}</h3>
+                      <p className="text-sm text-gray-500">{team.city}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getVerdictColor(team.rootability_score)}`}>
+                    <span className={`px-3 py-1 rounded-full text-sm font-bold border ${getVerdictColor(team.rootability_score)}`}>
                       {team.rootability_score}
                     </span>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-gray-600">
-                      Win Rate: {((team.total_wins / (team.total_wins + team.total_losses)) * 100).toFixed(1)}%
-                    </p>
-                    <p className="text-gray-600">
-                      Championships: {team.championships}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-2">{getVerdictLabel(team.rootability_score)}</p>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>Super Bowls: {team.super_bowl_wins}W - {team.super_bowl_losses}L ({team.total_appearances} appearances)</p>
                   </div>
+                  <p className="mt-3 text-sm font-medium" style={{ color: team.rootability_score > 60 ? '#059669' : team.rootability_score > 40 ? '#d97706' : '#dc2626' }}>
+                    {team.verdict.label}
+                  </p>
                 </Link>
               ))}
             </div>
@@ -236,31 +132,25 @@ function Home() {
         </div>
       </section>
 
-      {/* Info Section */}
-      <section className="py-12 px-4 bg-gray-100">
+      {/* How It Works */}
+      <section className="py-12 px-4 bg-gray-50">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">How It Works</h2>
+          <h2 className="text-3xl font-bold mb-8">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="p-6">
               <div className="text-4xl mb-4">🔍</div>
-              <h3 className="text-lg font-semibold mb-2">Search Any Team</h3>
-              <p className="text-gray-600">
-                Find teams across NFL, NBA, MLB, NHL, and major soccer leagues
-              </p>
+              <h3 className="text-lg font-semibold mb-2">Search Any NFL Team</h3>
+              <p className="text-gray-600">Find teams by name or city</p>
             </div>
             <div className="p-6">
               <div className="text-4xl mb-4">📊</div>
-              <h3 className="text-lg font-semibold mb-2">Analyze the Data</h3>
-              <p className="text-gray-600">
-                We crunch the numbers on wins, championships, and trends
-              </p>
+              <h3 className="text-lg font-semibold mb-2">Analyze Super Bowl History</h3>
+              <p className="text-gray-600">We crunch wins, losses, margins, and appearances</p>
             </div>
             <div className="p-6">
               <div className="text-4xl mb-4">🎯</div>
               <h3 className="text-lg font-semibold mb-2">Get Your Verdict</h3>
-              <p className="text-gray-600">
-                Discover if they're worth your heart and soul
-              </p>
+              <p className="text-gray-600">From "Abandon Ship" to "Bandwagon Approved"</p>
             </div>
           </div>
         </div>
