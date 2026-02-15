@@ -9,16 +9,18 @@ function Compare() {
   const [team1Id, setTeam1Id] = useState(searchParams.get('team1') || '')
   const [team2Id, setTeam2Id] = useState(searchParams.get('team2') || '')
   const [comparison, setComparison] = useState(null)
+  const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/teams`)
+    fetch(`${API_BASE}/api/teams/names`)
       .then(r => r.json())
       .then(setAllTeams)
   }, [])
 
   useEffect(() => {
-    if (team1Id && team2Id) {
+    if (team1Id && team2Id && team1Id !== team2Id) {
       handleCompare()
     }
   }, [team1Id, team2Id])
@@ -26,9 +28,28 @@ function Compare() {
   async function handleCompare() {
     if (!team1Id || !team2Id) return
     setLoading(true)
+    setAnalysis(null)
+
+    // Fetch stat comparison
     const res = await fetch(`${API_BASE}/api/compare?team1=${team1Id}&team2=${team2Id}`)
-    setComparison(await res.json())
+    const data = await res.json()
+    setComparison(data)
     setLoading(false)
+
+    // Fetch LLM analysis
+    setAnalyzing(true)
+    try {
+      const llmRes = await fetch(`${API_BASE}/api/compare-analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team1_id: Number(team1Id), team2_id: Number(team2Id) }),
+      })
+      if (llmRes.ok) setAnalysis(await llmRes.json())
+    } catch {
+      // Non-blocking
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
   function StatRow({ label, val1, val2, higherIsBetter = true }) {
@@ -90,6 +111,24 @@ function Compare() {
         </div>
       )}
 
+      {/* LLM Analysis — Primary */}
+      {(analyzing || analysis) && !loading && (
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
+          <h2 className="text-xl font-bold mb-4">The AI Verdict</h2>
+          {analyzing ? (
+            <div className="flex items-center space-x-3 py-8">
+              <div className="animate-spin h-6 w-6 border-3 border-indigo-500 border-t-transparent rounded-full" />
+              <p className="text-gray-500">Generating head-to-head analysis...</p>
+            </div>
+          ) : analysis ? (
+            <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
+              {analysis.analysis}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Stat Comparison — Supporting */}
       {comparison && !loading && (
         <div className="bg-white rounded-xl shadow p-6">
           {/* Team Names Header */}
@@ -120,38 +159,17 @@ function Compare() {
             </p>
           </div>
 
-          {/* Verdict Labels */}
-          <div className="grid grid-cols-3 items-center mb-6">
-            <p className="text-sm font-medium text-right text-gray-600">{comparison.team1.verdict.label}</p>
-            <p className="text-sm text-gray-400 text-center">Verdict</p>
-            <p className="text-sm font-medium text-gray-600">{comparison.team2.verdict.label}</p>
-          </div>
-
           {/* Stats Comparison */}
           <StatRow label="SB Wins" val1={comparison.team1.super_bowl_wins} val2={comparison.team2.super_bowl_wins} />
           <StatRow label="SB Losses" val1={comparison.team1.super_bowl_losses} val2={comparison.team2.super_bowl_losses} higherIsBetter={false} />
           <StatRow label="Appearances" val1={comparison.team1.total_appearances} val2={comparison.team2.total_appearances} />
           <StatRow label="Points Scored" val1={comparison.team1.total_points_scored} val2={comparison.team2.total_points_scored} />
           <StatRow label="Points Allowed" val1={comparison.team1.total_points_allowed} val2={comparison.team2.total_points_allowed} higherIsBetter={false} />
-
-          {/* Winner */}
-          <div className="mt-6 text-center p-4 bg-indigo-50 rounded-lg">
-            {comparison.team1.rootability_score === comparison.team2.rootability_score ? (
-              <p className="text-lg font-bold text-gray-700">It's a tie! Both teams are equally rootable.</p>
-            ) : (
-              <p className="text-lg font-bold text-indigo-700">
-                {comparison.team1.rootability_score > comparison.team2.rootability_score
-                  ? comparison.team1.name
-                  : comparison.team2.name
-                } is the better pick!
-              </p>
-            )}
-          </div>
         </div>
       )}
 
-      {!comparison && !loading && team1Id && team2Id && (
-        <p className="text-center text-gray-500">Select two different teams to compare.</p>
+      {!comparison && !loading && team1Id && team2Id && team1Id === team2Id && (
+        <p className="text-center text-gray-500 py-8">Select two different teams to compare.</p>
       )}
     </div>
   )

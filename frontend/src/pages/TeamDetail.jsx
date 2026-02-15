@@ -7,7 +7,9 @@ function TeamDetail() {
   const { id } = useParams()
   const [team, setTeam] = useState(null)
   const [history, setHistory] = useState([])
+  const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [analyzing, setAnalyzing] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -20,16 +22,38 @@ function TeamDetail() {
         setTeam(teamData)
         setHistory(historyData.history || [])
         setLoading(false)
+        // Auto-trigger LLM analysis
+        fetchAnalysis()
       })
       .catch(() => { setError('Team not found'); setLoading(false) })
   }, [id])
 
-  function getVerdictColor(score) {
-    if (score <= 20) return { text: 'text-red-600', bg: 'bg-red-500', light: 'bg-red-50' }
-    if (score <= 40) return { text: 'text-orange-600', bg: 'bg-orange-500', light: 'bg-orange-50' }
-    if (score <= 60) return { text: 'text-yellow-600', bg: 'bg-yellow-500', light: 'bg-yellow-50' }
-    if (score <= 80) return { text: 'text-green-600', bg: 'bg-green-500', light: 'bg-green-50' }
-    return { text: 'text-emerald-600', bg: 'bg-emerald-500', light: 'bg-emerald-50' }
+  async function fetchAnalysis() {
+    setAnalyzing(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_id: Number(id) }),
+      })
+      if (res.ok) setAnalysis(await res.json())
+    } catch {
+      // Analysis is supplementary, don't block on failure
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  function cleanAnalysis(text) {
+    return text.split('\n').filter(line => !line.toUpperCase().includes('ROOTOMETER:')).join('\n').trim()
+  }
+
+  function getScoreBg(score) {
+    if (score <= 20) return 'from-red-500 to-red-600'
+    if (score <= 40) return 'from-orange-500 to-orange-600'
+    if (score <= 60) return 'from-yellow-500 to-yellow-600'
+    if (score <= 80) return 'from-green-500 to-green-600'
+    return 'from-emerald-500 to-emerald-600'
   }
 
   if (loading) {
@@ -53,7 +77,7 @@ function TeamDetail() {
     )
   }
 
-  const colors = getVerdictColor(team.rootability_score)
+  const score = analysis ? analysis.rootometer_score : team.rootability_score
   const winPct = team.total_appearances > 0
     ? ((team.super_bowl_wins / team.total_appearances) * 100).toFixed(1)
     : '0.0'
@@ -61,44 +85,55 @@ function TeamDetail() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <nav className="mb-6">
-        <Link to="/" className="text-indigo-600 hover:text-indigo-700">← Back to Search</Link>
+        <Link to="/" className="text-indigo-600 hover:text-indigo-700">← Back to Home</Link>
       </nav>
 
-      {/* Team Header */}
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
+      {/* Team Header with Score */}
+      <div className={`bg-gradient-to-r ${getScoreBg(score)} rounded-2xl p-8 text-white mb-6`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm text-gray-500 uppercase tracking-wide mb-1">{team.conference}</p>
+            <p className="text-sm uppercase tracking-wide opacity-80 mb-1">{team.conference}</p>
             <h1 className="text-3xl md:text-4xl font-bold">{team.name}</h1>
-            <p className="text-gray-500">{team.city}</p>
+            <p className="opacity-80">{team.city}</p>
           </div>
-          <div className={`mt-4 md:mt-0 px-6 py-3 rounded-xl ${colors.light}`}>
-            <p className={`text-4xl font-bold text-center ${colors.text}`}>{team.rootability_score}</p>
-            <p className={`text-sm font-medium text-center ${colors.text}`}>{team.verdict.label}</p>
+          <div className="mt-4 md:mt-0 text-center">
+            <p className="text-sm uppercase tracking-widest opacity-80">Root-O-Meter</p>
+            <p className="text-5xl font-black">{score}</p>
+          </div>
+        </div>
+
+        {/* Meter Bar */}
+        <div className="mt-6">
+          <div className="relative">
+            <div className="h-3 rounded-full bg-white/20 overflow-hidden">
+              <div className="h-full rounded-full bg-white/60" style={{ width: `${score}%` }} />
+            </div>
+          </div>
+          <div className="flex justify-between text-xs opacity-60 mt-1">
+            <span>Abandon Ship</span>
+            <span>Bandwagon Approved</span>
           </div>
         </div>
       </div>
 
-      {/* Root-O-Meter */}
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <h2 className="text-xl font-bold mb-4">Root-O-Meter</h2>
-        <div className="relative">
-          <div className="h-8 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 overflow-hidden" />
-          <div
-            className="absolute top-0 w-1 h-8 bg-gray-900 rounded"
-            style={{ left: `${team.rootability_score}%`, transform: 'translateX(-50%)' }}
-          />
-        </div>
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>Abandon Ship</span>
-          <span>Bandwagon Approved</span>
-        </div>
-        <p className="mt-4 text-gray-600 leading-relaxed italic">
-          "{team.verdict.description}"
-        </p>
+      {/* LLM Analysis — Primary Content */}
+      <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
+        <h2 className="text-xl font-bold mb-4">The Verdict</h2>
+        {analyzing ? (
+          <div className="flex items-center space-x-3 py-8">
+            <div className="animate-spin h-6 w-6 border-3 border-indigo-500 border-t-transparent rounded-full" />
+            <p className="text-gray-500">Generating analysis...</p>
+          </div>
+        ) : analysis ? (
+          <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
+            {cleanAnalysis(analysis.analysis)}
+          </div>
+        ) : (
+          <p className="text-gray-400 italic">Analysis unavailable.</p>
+        )}
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid — Supporting Data */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow p-4 text-center">
           <p className="text-3xl font-bold text-indigo-600">{team.super_bowl_wins}</p>
@@ -115,27 +150,6 @@ function TeamDetail() {
         <div className="bg-white rounded-xl shadow p-4 text-center">
           <p className="text-3xl font-bold text-green-600">{winPct}%</p>
           <p className="text-sm text-gray-500">SB Win Rate</p>
-        </div>
-      </div>
-
-      {/* Points */}
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <h2 className="text-xl font-bold mb-4">Super Bowl Points</h2>
-        <div className="flex gap-8">
-          <div>
-            <p className="text-2xl font-bold text-indigo-600">{team.total_points_scored}</p>
-            <p className="text-sm text-gray-500">Points Scored</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-red-500">{team.total_points_allowed}</p>
-            <p className="text-sm text-gray-500">Points Allowed</p>
-          </div>
-          <div>
-            <p className={`text-2xl font-bold ${team.total_points_scored - team.total_points_allowed >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-              {team.total_points_scored - team.total_points_allowed > 0 ? '+' : ''}{team.total_points_scored - team.total_points_allowed}
-            </p>
-            <p className="text-sm text-gray-500">Point Differential</p>
-          </div>
         </div>
       </div>
 
